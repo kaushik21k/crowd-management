@@ -30,15 +30,27 @@ const Admin = ({ token, focusSection }) => {
   const [showStaffPassword, setShowStaffPassword] = useState(false);
   const [staffMessage, setStaffMessage] = useState(null);
   const [staffLoading, setStaffLoading] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
+  const handleUnauthorized = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    setSessionExpired(true);
+  };
+
   const fetchAdminData = async () => {
+    if (!token) return;
     try {
       const [dashboardRes, zonesRes] = await Promise.all([
         fetch(`${API_URL}/admin/dashboard_data`, { headers: authHeaders }),
         fetch(`${API_URL}/zones`, { headers: authHeaders })
       ]);
+      if (dashboardRes.status === 401 || zonesRes.status === 401) {
+        handleUnauthorized();
+        return;
+      }
       const dashboardData = await dashboardRes.json();
       const zoneData = await zonesRes.json();
       setStats(dashboardData.stats);
@@ -50,8 +62,13 @@ const Admin = ({ token, focusSection }) => {
   };
 
   const fetchStaff = async () => {
+    if (!token) return;
     try {
       const res = await fetch(`${API_URL}/admin/staff`, { headers: authHeaders });
+      if (res.status === 401) {
+        handleUnauthorized();
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setStaffList(data);
@@ -62,11 +79,12 @@ const Admin = ({ token, focusSection }) => {
   };
 
   useEffect(() => {
+    if (!token) return;
     fetchAdminData();
     fetchStaff();
     const interval = setInterval(() => { fetchAdminData(); fetchStaff(); }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [token]);
 
   // Removed scroll-to-section logic in favor of distinct views
 
@@ -243,6 +261,11 @@ const Admin = ({ token, focusSection }) => {
 
   return (
     <div>
+      {sessionExpired && (
+        <div className="glass-panel mb-4" style={{ borderColor: 'var(--danger)', color: 'var(--danger)', textAlign: 'center' }}>
+          Session expired or unauthorized. Please sign in again.
+        </div>
+      )}
       <div className="text-center mb-4">
         <h1 className="title">
           {focusSection === 'staff-access' ? 'Staff Management' : focusSection === 'zones' ? 'Zone Management' : 'Admin Monitor'}

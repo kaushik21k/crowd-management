@@ -9,13 +9,18 @@ const Staff = ({ token }) => {
   const [zones, setZones] = useState([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   useEffect(() => {
+    if (!token) {
+      setSessionExpired(true);
+      return;
+    }
     fetch(`${API_URL}/zones`)
       .then(res => res.json())
       .then(data => setZones(data))
       .catch(err => console.error("Could not fetch zones: ", err));
-  }, []);
+  }, [token]);
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -46,6 +51,11 @@ const Staff = ({ token }) => {
 
   return (
     <div className="glass-panel" style={{ maxWidth: '400px', margin: '2rem auto' }}>
+      {sessionExpired && (
+        <div className="mb-4" style={{ color: 'var(--danger)', textAlign: 'center' }}>
+          Session expired. Please sign in again.
+        </div>
+      )}
       <div className="text-center mb-4">
         <h2 className="title" style={{ fontSize: '2rem' }}>Staff Login</h2>
         <p className="subtitle" style={{ fontSize: '1rem' }}>Enter credentials to access scanner.</p>

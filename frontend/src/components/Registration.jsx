@@ -2,6 +2,52 @@ import React, { useState } from 'react';
 
 const API_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 
+const departmentOptions = [
+  'Computer Science and Engineering',
+  'Information Technology',
+  'Electronics and Communication Engineering',
+  'Electrical and Electronics Engineering',
+  'Mechanical Engineering',
+  'Civil Engineering',
+  'Chemical Engineering',
+  'Biomedical Engineering',
+  'Artificial Intelligence and Data Science',
+  'Artificial Intelligence and Machine Learning',
+  'Cyber Security',
+  'Data Science',
+  'Software Engineering',
+  'Business Administration',
+  'Commerce',
+  'Mathematics',
+  'Physics',
+  'Chemistry',
+  'Biology',
+  'Other'
+];
+
+const bloodGroupOptions = [
+  'A+',
+  'A-',
+  'A1+',
+  'A1-',
+  'A2+',
+  'A2-',
+  'A1B+',
+  'A1B-',
+  'A2B+',
+  'A2B-',
+  'B+',
+  'B-',
+  'AB+',
+  'AB-',
+  'O+',
+  'O-',
+  'Bombay (hh)',
+  'Para-Bombay',
+  'Rh null',
+  'Other / Rare Type'
+];
+
 const Registration = () => {
   const [formData, setFormData] = useState({ 
     name: '', email: '', age: '', dob: '', dept: '', clg_mail: '', blood_group: '', address: '', mobile_no: '' 
@@ -68,7 +114,12 @@ const Registration = () => {
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label>Department</label>
-              <input type="text" className="form-control" value={formData.dept} onChange={(e) => setFormData({...formData, dept: e.target.value})} placeholder="Computer Science" />
+              <select className="form-control" value={formData.dept} onChange={(e) => setFormData({...formData, dept: e.target.value})} required>
+                <option value="">Select Department...</option>
+                {departmentOptions.map((dept) => (
+                  <option key={dept} value={dept}>{dept}</option>
+                ))}
+              </select>
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label>College Mail</label>
@@ -76,17 +127,26 @@ const Registration = () => {
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label>Blood Group</label>
-              <select className="form-control" value={formData.blood_group} onChange={(e) => setFormData({...formData, blood_group: e.target.value})}>
-                <option value="">Select...</option>
-                <option value="A+">A+</option><option value="A-">A-</option>
-                <option value="B+">B+</option><option value="B-">B-</option>
-                <option value="O+">O+</option><option value="O-">O-</option>
-                <option value="AB+">AB+</option><option value="AB-">AB-</option>
+              <select className="form-control" value={formData.blood_group} onChange={(e) => setFormData({...formData, blood_group: e.target.value})} required>
+                <option value="">Select Blood Group...</option>
+                {bloodGroupOptions.map((group) => (
+                  <option key={group} value={group}>{group}</option>
+                ))}
               </select>
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label>Mobile Number</label>
-              <input type="tel" className="form-control" value={formData.mobile_no} onChange={(e) => setFormData({...formData, mobile_no: e.target.value})} placeholder="+1 234 567 890" />
+              <input
+                type="tel"
+                className="form-control"
+                value={formData.mobile_no}
+                onChange={(e) => setFormData({ ...formData, mobile_no: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                placeholder="Enter 10-digit mobile number"
+                inputMode="numeric"
+                pattern="[0-9]{10}"
+                maxLength="10"
+                required
+              />
             </div>
             <div className="form-group" style={{ gridColumn: 'span 2', marginBottom: 0 }}>
               <label>Address</label>
