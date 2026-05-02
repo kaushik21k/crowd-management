@@ -1,10 +1,14 @@
 import cv2
 import requests
 import time
+import os
 from pyzbar.pyzbar import decode
+from dotenv import load_dotenv
 
-API_URL = "http://127.0.0.1:8000"
-ZONE_NAME = "Main Entrance"
+load_dotenv()
+
+API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
+ZONE_NAME = os.getenv("ZONE_NAME", "Main Entrance")
 
 def main():
     cap = cv2.VideoCapture(0)

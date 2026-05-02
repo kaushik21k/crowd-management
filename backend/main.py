@@ -86,16 +86,17 @@ def startup_event():
         # Create default admin if none exists
         admin = db.query(models.User).filter(models.User.role == "admin").first()
         if not admin:
+            default_admin_password = os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123")
             default_admin = models.User(
                 name="Admin User",
                 email="admin@crowdflow.com",
-                hashed_password=auth.get_password_hash("crowdevent@123"),
+                hashed_password=auth.get_password_hash(default_admin_password),
                 role="admin",
                 qr_id="ADMIN-" + str(uuid.uuid4())[:8]
             )
             db.add(default_admin)
             db.commit()
-            print("Default admin created: admin@crowdflow.com / crowdevent@123")
+            print("Default admin created: admin@crowdflow.com (check DEFAULT_ADMIN_PASSWORD env variable)")
     finally:
         db.close()
 

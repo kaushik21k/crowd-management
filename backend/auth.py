@@ -11,7 +11,9 @@ import os
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 # Secret key to sign JWT tokens
-SECRET_KEY = os.getenv("SECRET_KEY", "your-very-secret-key-change-it")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable is required")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 600 # 10 hours
 
