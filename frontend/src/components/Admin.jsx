@@ -98,6 +98,22 @@ const Admin = ({ token, focusSection }) => {
     setTimeout(() => setMessage(null), 3000);
   };
 
+  const handleDeleteCitizen = async (citizen) => {
+    if (!window.confirm(`Are you sure you want to delete ${citizen.name}? This will also remove their entry records and free up capacity.`)) return;
+    try {
+      const res = await fetch(`${API_URL}/admin/citizens/${citizen.id}`, { method: 'DELETE', headers: authHeaders });
+      if (res.ok) {
+        showTimedMessage('success', `Attendee "${citizen.name}" deleted successfully.`);
+        fetchAdminData();
+      } else {
+        const err = await res.json();
+        showTimedMessage('danger', err.detail || 'Failed to delete attendee');
+      }
+    } catch {
+      showTimedMessage('danger', 'Error connecting to server');
+    }
+  };
+
   const exportToCSV = () => {
     if (!citizens || citizens.length === 0) {
       alert('No data to export.');
@@ -611,7 +627,18 @@ const Admin = ({ token, focusSection }) => {
 
       {/* Attendee Table */}
       {(!focusSection || focusSection === 'monitor') && (
-      <div className="glass-panel" style={{ overflowX: 'auto' }}>
+      <>
+        {message && (
+          <div style={{
+            padding: '0.85rem 1.1rem', borderRadius: '8px', marginBottom: '1.25rem', fontSize: '0.95rem', textAlign: 'center',
+            background: message.type === 'success' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
+            border: `1px solid ${message.type === 'success' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
+            color: message.type === 'success' ? 'var(--success)' : 'var(--danger)'
+          }}>
+            {message.text}
+          </div>
+        )}
+        <div className="glass-panel" style={{ overflowX: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h3 style={{ margin: 0 }}>Attendee Database</h3>
           <button 
@@ -630,6 +657,7 @@ const Admin = ({ token, focusSection }) => {
               <th style={{ padding: '1rem 0.5rem' }}>Dept / Age</th>
               <th style={{ padding: '1rem 0.5rem' }}>Status</th>
               <th style={{ padding: '1rem 0.5rem' }}>Zone Entered</th>
+              <th style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -648,6 +676,21 @@ const Admin = ({ token, focusSection }) => {
                   </span>
                 </td>
                 <td style={{ padding: '1rem 0.5rem' }}>{c.zone_entered || '-'}</td>
+                <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>
+                  <button 
+                    onClick={() => handleDeleteCitizen(c)}
+                    style={{
+                      background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                      color: 'var(--danger)', borderRadius: '6px', padding: '0.3rem 0.6rem',
+                      cursor: 'pointer', fontSize: '0.8rem', transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.25)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.1)'}
+                    title="Delete Attendee"
+                  >
+                    🗑️
+                  </button>
+                </td>
               </tr>
             ))}
             {citizens.length === 0 && (
@@ -656,6 +699,7 @@ const Admin = ({ token, focusSection }) => {
           </tbody>
         </table>
       </div>
+      </>
       )}
     </div>
   );

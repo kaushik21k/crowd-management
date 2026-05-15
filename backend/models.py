@@ -26,9 +26,11 @@ class User(Base):
     blood_group = Column(String)
     mobile_no = Column(String)
     qr_id = Column(String, unique=True, index=True)
+    zone_id = Column(Integer, ForeignKey("zones.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     entries = relationship("Entry", back_populates="user")
+    zone = relationship("Zone", foreign_keys=[zone_id])
 
 class Zone(Base):
     __tablename__ = "zones"

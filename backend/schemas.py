@@ -14,6 +14,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: Optional[str] = None # Optional for citizens, required for staff/admin
+    zone_id: Optional[int] = None  # Zone selection for registration
 
 class UserLogin(BaseModel):
     email: EmailStr

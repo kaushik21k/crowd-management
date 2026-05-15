@@ -4,7 +4,8 @@ import base64
 import io
 import os
 from typing import List, cast, Any
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, status
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, status, BackgroundTasks
+import email_utils
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -13,7 +14,7 @@ import qrcode.constants
 from dotenv import load_dotenv
 from pathlib import Path
 
-load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=True)
 
 from database import SessionLocal, engine, Base
 import models
@@ -77,6 +78,21 @@ manager = ConnectionManager()
 def startup_event():
     db = SessionLocal()
     try:
+        # Ensure schema is up-to-date: add users.zone_id if missing (migration helper)
+        try:
+            cols = [r[1] for r in db.execute(text("PRAGMA table_info('users')")).fetchall()]
+        except Exception:
+            cols = []
+
+        if 'zone_id' not in cols:
+            try:
+                db.execute(text("ALTER TABLE users ADD COLUMN zone_id INTEGER"))
+                db.commit()
+                print('Added missing column users.zone_id')
+            except Exception:
+                # Ignore if ALTER TABLE fails for any reason
+                db.rollback()
+
         # Ensure main entrance zone exists
         zone = db.query(models.Zone).filter(models.Zone.name == "Main Entrance").first()
         if not zone:
@@ -118,6 +134,22 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     existing = db.query(models.User).filter(models.User.email == user.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Check zone capacity if zone_id is provided
+    zone_id = None
+    if user.zone_id:
+        zone = db.query(models.Zone).filter(models.Zone.id == user.zone_id).first()
+        if not zone:
+            raise HTTPException(status_code=400, detail="Selected zone not found")
+        
+        # Check if zone has reached maximum capacity
+        current_count = cast(int, zone.current_count) if zone.current_count is not None else 0
+        capacity = cast(int, zone.capacity)
+        if current_count >= capacity:
+            raise HTTPException(status_code=403, detail=f"Zone '{zone.name}' has reached maximum capacity")
+        
+        zone_id = user.zone_id
+    
     unique_qr_id = str(uuid.uuid4())
     hashed = auth.get_password_hash(user.password) if user.password else None
     new_user = models.User(
@@ -132,13 +164,14 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
         blood_group=user.blood_group,
         mobile_no=user.mobile_no,
         qr_id=unique_qr_id,
+        zone_id=zone_id,
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
 
     # generate QR (optimized for speed)
-    qr = qrcode.QRCode(version=1, box_size=6, border=1, error_correction=qrcode.constants.ERROR_CORRECT_L)
+    qr = qrcode.QRCode(version=1, box_size=6, border=4, error_correction=qrcode.constants.ERROR_CORRECT_L)
     qr.add_data(unique_qr_id)
     qr.make(fit=True)
     img = cast(Any, qr.make_image(fill_color="black", back_color="white")).convert('RGB')
@@ -160,7 +193,7 @@ def read_current_user(user_data: dict = Depends(auth.get_current_user_data), db:
 
 
 @app.post("/scan")
-async def scan_qr(scan_data: schemas.ScanRequest, db: Session = Depends(get_db), current_user: dict = Depends(auth.check_staff_role)):
+async def scan_qr(scan_data: schemas.ScanRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: dict = Depends(auth.check_staff_role)):
     user = db.query(models.User).filter(models.User.qr_id == scan_data.qr_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Invalid QR Code")
@@ -193,6 +226,11 @@ async def scan_qr(scan_data: schemas.ScanRequest, db: Session = Depends(get_db),
     alert_msg = None
     if remaining == 0:
         alert_msg = "maximum crowd allowed"
+        # Send email alerts to ALL registered users
+        affected_users = db.query(models.User).all()
+        for u in affected_users:
+            if u.email:
+                background_tasks.add_task(email_utils.send_alert_email, u.email, u.name, zone.name)
     elif remaining <= 5:
         alert_msg = f"Remaining {remaining} slots are available"
 
@@ -255,6 +293,25 @@ def delete_zone(zone_id: int, db: Session = Depends(get_db), current_user: dict 
     db.delete(existing_zone)
     db.commit()
     return {"message": "Zone deleted"}
+
+
+@app.delete("/admin/citizens/{citizen_id}")
+def delete_citizen(citizen_id: int, db: Session = Depends(get_db), current_user: dict = Depends(auth.check_admin_role)):
+    user = db.query(models.User).filter(models.User.id == citizen_id, models.User.role == "citizen").first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Citizen not found")
+    
+    # Decrement the zone capacity if they have already entered
+    entries = db.query(models.Entry).filter(models.Entry.user_id == citizen_id).all()
+    for entry in entries:
+        zone = db.query(models.Zone).filter(models.Zone.id == entry.zone_id).first()
+        if zone and zone.current_count is not None and zone.current_count > 0:
+            zone.current_count = cast(Any, int(zone.current_count) - 1)
+        db.delete(entry)
+        
+    db.delete(user)
+    db.commit()
+    return {"message": "Citizen deleted successfully"}
 
 
 @app.get("/admin/dashboard_data")

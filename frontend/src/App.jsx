@@ -4,6 +4,7 @@ import Dashboard from './components/Dashboard'
 import Admin from './components/Admin'
 import Staff from './components/Staff'
 import Login from './components/Login'
+import LiveStatus from './components/LiveStatus'
 
 function App() {
   const [currentView, setCurrentView] = useState('register')
@@ -42,6 +43,7 @@ function App() {
   }
 
   function renderMain() {
+    if (currentView === 'live-status') return <LiveStatus />
     if (currentView === 'register') return <Registration />
     if (currentView === 'login') return <Login onLogin={handleLogin} />
     if (currentView === 'dashboard') return <Dashboard token={auth.token} />
@@ -65,6 +67,7 @@ function App() {
         <div style={{ display: 'flex', gap: '15px' }}>
           {!auth.token ? (
             <>
+              <a href="#" onClick={(e) => { e.preventDefault(); navigate('live-status'); }} style={{ color: '#10b981', fontWeight: 'bold' }}>Live Status 🟢</a>
               <a href="#" onClick={(e) => { e.preventDefault(); navigate('register'); }}>Citizen Pass</a>
               <a href="#" onClick={(e) => { e.preventDefault(); navigate('login'); }}>Sign In</a>
             </>

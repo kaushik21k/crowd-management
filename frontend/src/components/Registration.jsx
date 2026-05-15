@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const API_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 
@@ -50,7 +50,7 @@ const bloodGroupOptions = [
 
 const Registration = () => {
   const [formData, setFormData] = useState({ 
-    name: '', email: '', age: '', dob: '', dept: '', clg_mail: '', blood_group: '', address: '', mobile_no: '' 
+    name: '', email: '', age: '', dob: '', dept: '', clg_mail: '', blood_group: '', address: '', mobile_no: ''
   });
   const [qrCode, setQrCode] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -58,6 +58,7 @@ const Registration = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     setLoading(true);
     setError(null);
 

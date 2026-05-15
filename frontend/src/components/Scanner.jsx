@@ -13,7 +13,7 @@ const Scanner = ({ zoneName, token }) => {
     // Initialize html5-qrcode scanner
     const scanner = new Html5QrcodeScanner(
       "qr-reader",
-      { fps: 10, qrbox: { width: 250, height: 250 } },
+      { fps: 15, qrbox: { width: 300, height: 300 } },
       /* verbose= */ false
     );
 
@@ -30,10 +30,9 @@ const Scanner = ({ zoneName, token }) => {
   }, []);
 
   const handleScan = async (text) => {
-    if (cooldownRef.current || text === lastScannedRef.current) return;
+    if (cooldownRef.current) return;
     
     cooldownRef.current = true;
-    lastScannedRef.current = text;
     
     try {
       const response = await fetch(`${API_URL}/scan`, {
@@ -61,7 +60,6 @@ const Scanner = ({ zoneName, token }) => {
     } catch (err) {
       setMessage(`CONNECTION ERROR: Could not reach backend.`);
       setSuccess(false);
-      lastScannedRef.current = null;
     }
     
     setTimeout(() => {
